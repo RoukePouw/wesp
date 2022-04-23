@@ -4,11 +4,23 @@ const glob = require('glob');
 const chokidar = require('chokidar');
 
 /**
- * Callback 
+ * Callback
  *
  * @name Callback
  * @function
  */
+
+/**
+ *
+ * @param action
+ */
+function getActionName (action) {
+  let actionName = action.toString()
+    .substr('function '.length);
+  actionName = actionName.substr(0, actionName.indexOf('('));
+
+  return actionName || '[anonymous function]';
+}
 
 /**
  * Execute multiple actions sequentially
@@ -19,10 +31,7 @@ const chokidar = require('chokidar');
 const series = (...actions) => function (cb) {
   if (actions.length === 0) cb();
   else {
-    let functionName = actions[0].toString()
-      .substr('function '.length);
-    functionName = functionName.substr(0, functionName.indexOf('('));
-    message(functionName);
+    message(getActionName(actions[0]));
     actions[0](() => {
       const a = actions.slice(1);
       series(...a)(cb);
@@ -51,10 +60,7 @@ const parallel = (...actions) => function (cb) {
     }
 
     for (const action of actions) {
-      let functionName = action.toString()
-        .substr('function '.length);
-      functionName = functionName.substr(0, functionName.indexOf('('));
-      message(functionName);
+      message(getActionName(action));
       /**
        *
        */
@@ -68,16 +74,18 @@ const parallel = (...actions) => function (cb) {
 exports.parallel = parallel;
 
 const watchers = [];
-/** Watch for file changes in given path, fire if changes are detected
+/**
+ * Watch for file changes in given path, fire if changes are detected
  *
  * @param {string|string[]} pattern
  * @param {Function} actions
  * @param action
+ * @param persistent
  */
-const onFileChange = function onFileChange (pattern, action) {
+const onFileChange = function onFileChange (pattern, action, persistent = true) {
   // https://www.npmjs.com/package/chokidar/v/3.0.0
   const watcher = chokidar.watch(pattern, {
-    persistent: true,
+    persistent: persistent,
     ignoreInitial: true,
     followSymlinks: true
   }).on('all', (event, filePath) => {
@@ -92,6 +100,7 @@ exports.onFileChange = onFileChange;
 
 /**
  * Watch for file changes in given path, fire for each changed and added file
+ *
  * @param {string|string[]} pattern
  * @param {Function} actions
  * @param action
@@ -115,6 +124,7 @@ exports.onSingleFileChange = function onSingleFileChange (pattern, action) {
 
 /**
  * Action to execute on load
+ *
  * @param {Function} action
  */
 exports.onLoad = action => {
@@ -147,6 +157,7 @@ const handleError = cb => (error, stdout, stderr) => {
 };
 /**
  * Execute system command
+ *
  * @param {string} command
  * @returns {Callback}
  */
@@ -156,6 +167,7 @@ const execute = command => function execute (cb) {
 exports.execute = execute;
 /**
  * Create a (nested) directory
+ *
  * @param {string} dirPath
  * @returns {Callback}
  */
@@ -163,6 +175,7 @@ exports.mkDir = function mkDir (dirPath) { return execute(`mkdir -p ${dirPath};`
 
 /**
  * Execute an action for each file mathcing pattern
+ *
  * @param {string|string{}} pattern
  * @param {Function} action - // action = ({path,contents}) => cb => {}
  * @returns {Callback}
@@ -202,6 +215,7 @@ exports.forEachFile = (pattern, action) => function forEachFile (cb) {
 };
 /**
  * Write content to file
+ *
  * @param {string} path
  * @param {string} content
  * @returns {Callback}
@@ -211,6 +225,7 @@ exports.write = (path, content) => function write (cb) {
 };
 /**
  * Read content from file
+ *
  * @param {string} path
  * @returns {Callback} content
  */
@@ -234,6 +249,7 @@ exports.message = message;
 
 /**
  * Check if on set of files is newer than other set of files, execute action if so
+ *
  * @param {string|string[]} path0
  * @param {string|string[]} path1
  * @param {Function} action
@@ -283,10 +299,10 @@ exports.ifNewerThan = (path0, path1, action) => function ifNewerThan (cb) {
 /**
  * Reload wesp process when wesp code has been changed
  */
-function reload(){
-  //the shell script will take this exit code to reload
+function reload () {
+  // the shell script will take this exit code to reload
   process.exit(3);
 }
-exports.reload = reload
+exports.reload = reload;
 
-onFileChange('./wesp.js', reload)
+onFileChange('./wesp.js', reload, false);

@@ -5,13 +5,16 @@
   "main": "index.js",
   "author": "RoukePouw",
   "license": "GNU General Public License v3.0",
-  "bin": { "wesp": "wesp" },
+  "bin": {
+    "wesp": "wesp"
+  },
   "devDependencies": {
     "eslint": "^8.13.0",
     "eslint-plugin-jsdoc": "^39.1.0"
   },
   "dependencies": {
-    "chokidar": "^3.5.3"
+    "chokidar": "^3.5.3",
+    "glob": "^8.0.1"
   },
   "homepage": "https://github.com/roukepouw/wesp",
   "repository": {
@@ -20,5 +23,5 @@
   },
   "bugs": {
     "url": "https://github.com/roukepouw/wesp/issues"
-  },
+  }
 }
