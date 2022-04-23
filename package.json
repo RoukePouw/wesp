@@ -12,5 +12,13 @@
   },
   "dependencies": {
     "chokidar": "^3.5.3"
-  }
+  },
+  "homepage": "https://github.com/roukepouw/wesp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roukepouw/wesp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/roukepouw/wesp/issues"
+  },
 }
