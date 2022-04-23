@@ -1,0 +1,15 @@
+#/bin/sh
+
+if [ ! -e "./wesp.js" ]; then
+    echo "No wesp.js file found in $(pwd)"
+    exit 1
+fi
+
+while true; do
+    node ./wesp.js
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" != "3" ];then
+        exit $EXIT_CODE
+    fi
+    # if exit code=3, we restart
+done
