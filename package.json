@@ -1,12 +1,12 @@
 {
   "name": "wesp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Javascript workflow utilities",
   "main": "index.js",
   "author": "RoukePouw",
   "license": "GNU General Public License v3.0",
   "bin": {
-    "wesp": "wesp.js"
+    "wesp": "bin/wesp.js"
   },
   "devDependencies": {
     "eslint": "^8.13.0",
