@@ -241,8 +241,8 @@ const padd = x => x < 10 ? '0' + x : x;
  *
  * @param {string} string
  */
-function message (string) {
-  const now = new Date();
+function message (string) { // TODO list of args
+  const now = new Date(); // TODO add some colors
   console.log('[' + padd(now.getHours()) + ':' + padd(now.getMinutes()) + ':' + padd(now.getSeconds()) + '] ' + string);
 }
 exports.message = message;
@@ -304,5 +304,4 @@ function reload () {
   process.exit(3);
 }
 exports.reload = reload;
-
-onFileChange('./wesp.js', reload, false);
+onFileChange(['./wesp.js', __dirname + '/*'], reload);

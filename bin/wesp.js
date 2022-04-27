@@ -8,8 +8,8 @@ if (!existsSync('./wesp.js')) {
   process.exit(1);
 }
 
-let exitCode = 0;
-while (exitCode !== 3) {
+let exitCode = 3;
+while (exitCode === 3) {
   try {
     execSync('node ./wesp.js', {stdio: ['ignore', process.stdout, process.stderr]});
   } catch (error) {
