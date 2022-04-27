@@ -243,7 +243,7 @@ const padd = x => x < 10 ? '0' + x : x;
  */
 function message (string) { // TODO list of args
   const now = new Date(); // TODO add some colors
-  console.log('[' + padd(now.getHours()) + ':' + padd(now.getMinutes()) + ':' + padd(now.getSeconds()) + '] ' + string);
+  console.log('\x1b[36m' + padd(now.getHours()) + ':' + padd(now.getMinutes()) + ':' + padd(now.getSeconds()) + '\x1b[0m ' + string);
 }
 exports.message = message;
 
