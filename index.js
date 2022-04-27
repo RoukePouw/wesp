@@ -28,17 +28,17 @@ function getActionName (action) {
  * @param {...Function} actions - steps
  * @returns {Callback}
  */
-const series = (...actions) => function series (cb) {
+const series_ = (...actions) => function series (cb) {
   if (actions.length === 0) cb();
   else {
     message(getActionName(actions[0]));
     actions[0](() => {
       const a = actions.slice(1);
-      series(...a)(cb);
+      series_(...a)(cb);
     });
   }
 };
-exports.series = series;
+exports.series = series_;
 
 /**
  * Execute multiple actions simultaniously

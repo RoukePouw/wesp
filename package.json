@@ -1,6 +1,6 @@
 {
   "name": "wesp",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Javascript workflow utilities",
   "main": "index.js",
   "author": "RoukePouw",
