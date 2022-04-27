@@ -41,7 +41,7 @@ wesp.onFileChange('myfolder/*.js', () => console.log('Bzzz') );
 // Watch for file changes (fire for each changed and added file)
 wesp.onSingleFileChange('myfolder/*.js', filePath => console.log('Bzzz', filePath) );
 
-// Execute a actions sequentially
+// Execute actions sequentially
 wesp.onFileChange('myfolder/*.js', 
     series(
         callback => {console.log('Bzzz'); callback();},
@@ -49,7 +49,7 @@ wesp.onFileChange('myfolder/*.js',
     )
 );
 
-// Execute a actions simultaniously
+// Execute actions simultaniously
 wesp.onFileChange('myfolder/*.js', 
     parallel(
         callback => {console.log('Bzzz'); callback();},
@@ -57,7 +57,7 @@ wesp.onFileChange('myfolder/*.js',
     )
 );
 
-// Execute a action for all files
+// Execute action for all files
 wesp.forEachFile('myfolder/*.js', 
     forEachFile('otherfolder/*.txt'
         (path,content) => callback => { console.log(path,content); callback();}

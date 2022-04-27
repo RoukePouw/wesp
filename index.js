@@ -28,7 +28,7 @@ function getActionName (action) {
  * @param {...Function} actions - steps
  * @returns {Callback}
  */
-const series = (...actions) => function (cb) {
+const series = (...actions) => function series (cb) {
   if (actions.length === 0) cb();
   else {
     message(getActionName(actions[0]));
@@ -46,7 +46,7 @@ exports.series = series;
  * @param {...Function} actions
  * @returns {Callback}
  */
-const parallel = (...actions) => function (cb) {
+const parallel = (...actions) => function parallel (cb) {
   if (actions.length === 0) cb();
   else {
     const done = new Set();
@@ -183,9 +183,13 @@ exports.mkDir = function mkDir (dirPath) { return execute(`mkdir -p ${dirPath};`
 exports.forEachFile = (pattern, action) => function forEachFile (cb) {
   const subPatterns = typeof pattern === 'string' ? [pattern] : pattern;
   let count = 0;
+  let fileTotal = 0;
   const mergeCb = () => {
     ++count;
-    if (count === subPatterns.length) cb();
+    if (count === subPatterns.length) {
+      if (fileTotal === 0) message('forEachFile: no files found');
+      cb();
+    }
   };
   const cwd = process.cwd();
   for (const subPattern of subPatterns) {
@@ -195,10 +199,9 @@ exports.forEachFile = (pattern, action) => function forEachFile (cb) {
       } else {
         let count2 = 0;
         const mergeCb2 = () => {
-          ++count2;
           if (count2 === filePaths.length) mergeCb();
         };
-
+        fileTotal += filePaths.length;
         for (const filePath of filePaths) {
           message('forEachFile: ' + filePath.substr(cwd.length));
           fs.readFile(filePath, {}, (error, data) => {
@@ -206,9 +209,10 @@ exports.forEachFile = (pattern, action) => function forEachFile (cb) {
               path: filePath,
               contents: data
             };
-            action(file)(mergeCb2);
+            action(file)(() => { ++count2; mergeCb2(); });
           });
         }
+        mergeCb2();
       }
     });
   }
