@@ -18,7 +18,6 @@ function getActionName (action) {
   let actionName = action.toString()
     .substr('function '.length);
   actionName = actionName.substr(0, actionName.indexOf('('));
-
   return actionName || '[anonymous function]';
 }
 
@@ -139,22 +138,67 @@ exports.onLoad = action => {
 };
 
 /**
- * /a/b/c.d.e -> c.d
+ * '/a/b/c.d.e' -> 'c.d.e'
+ *
+ * @param {string} filePath
+ * @returns {string}
+ */
+function getFileName (filePath) {
+  return filePath.substring(filePath.lastIndexOf('/') + 1);
+}
+exports.getFileName = getFileName;
+
+/**
+ * '/a/b/c.d.e' -> 'c.d'
  *
  * @param {string} filePath
  * @returns {string}
  */
 exports.getBaseName = function getBaseName (filePath) {
-  let base = filePath.substring(filePath.lastIndexOf('/') + 1);
-  if (base.lastIndexOf('.') !== -1) { base = base.substring(0, base.lastIndexOf('.')); }
-  return base;
+  const fileName = getFileName(filePath);
+  if (fileName.startsWith('.')) { // hidden files '/a/b/.c.d.e' -> '.c.d'
+    return fileName.substring(0, fileName.lastIndexOf('.', 1));
+  } else if (fileName.lastIndexOf('.') !== -1) { // '/a/b/c.d.e' -> 'c.d'
+    return fileName.substring(0, fileName.lastIndexOf('.'));
+  }
+  // '/a/b/c' -> 'c'
+  return fileName;
 };
-// TODO dir, extension, filename
+
+/**
+ * '/a/b/c.d.e' -> 'e'
+ *
+ * @param {string} filePath
+ * @returns {string}
+ */
+exports.getExtension = function getExtension (filePath) {
+  const fileName = getFileName(filePath);
+  if (fileName.startsWith('.')) { // hidden files '/a/b/.c.d.e' -> '.c.d'
+    if (fileName.lastIndexOf('.', 1) !== -1) return fileName.substring(fileName.lastIndexOf('.') + 1); // /a/b/.c.d.e -> e
+    return ''; // '/a/b/.c' -> ''
+  }
+  if (fileName.lastIndexOf('.') !== -1) return fileName.substring(fileName.lastIndexOf('.') + 1); // /a/b/c.d.e -> e
+  return ''; // '/a/b/c' -> ''
+};
+
+/**
+ * '/a/b/c.d.e' -> '/a/b'
+ *
+ * @param {string} filePath
+ * @returns string
+ */
+exports.getDirPath = function getDirPath (filePath) {
+  const split = filePath.split('/');
+  return split.slice(0, split.length - 1).join('/');
+};
 
 const handleError = cb => (error, stdout, stderr) => {
-  if (error !== null) console.error(`Error: ${error}\n ${stderr}`);
+  if (error !== null) {
+    console.error(`Error: ${error}\n ${stderr} \n ${stdout}`);
+  }
   cb();
 };
+
 /**
  * Execute system command
  *
