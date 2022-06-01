@@ -11,7 +11,8 @@ if (!existsSync('./wesp.js')) {
 let exitCode = 3;
 while (exitCode === 3) {
   try {
-    execSync('node ./wesp.js', {stdio: ['ignore', process.stdout, process.stderr]});
+    execSync('node ./wesp.js '+process.argv.slice(2).join(' '), {stdio: ['ignore', process.stdout, process.stderr]});
+    exitCode = 0;
   } catch (error) {
     exitCode = error.status; // Might be 127 in your example.
   }

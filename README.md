@@ -30,6 +30,12 @@ Result
 Bzzz
 ```
 
+To run once without continuing to wathc files use:
+```sh
+$ wesp --continue-watching=false
+```
+
+
 ## API
 
 The following methods can be used in your `wesp.js` file to define your workflow:

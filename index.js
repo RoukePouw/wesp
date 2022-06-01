@@ -2,6 +2,7 @@ const fs = require('fs');
 const {exec} = require('child_process');
 const glob = require('glob');
 const chokidar = require('chokidar');
+const { exit } = require('process');
 
 /**
  * Callback
@@ -132,6 +133,9 @@ exports.onLoad = action => {
   action(() => {
     message('Finished');
     if (watchers.length > 0) {
+      if(process.argv.includes('--continue-watching=false')){
+        exit(0);
+      }
       message('Continue watching...');
     }
   });
