@@ -30,7 +30,7 @@ Result
 Bzzz
 ```
 
-To run once without continuing to wathc files use:
+To run once without continuing to watch files use:
 ```sh
 $ wesp --continue-watching=false
 ```
