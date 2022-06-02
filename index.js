@@ -16,10 +16,13 @@ const { exit } = require('process');
  * @param action
  */
 function getActionName (action) {
-  let actionName = action.toString()
-    .substr('function '.length);
-  actionName = actionName.substr(0, actionName.indexOf('('));
-  return actionName || '[anonymous function]';
+  let actionName = action.toString();
+  if (actionName.startsWith('function ')) {
+    actionName = actionName.substr('function '.length);
+    actionName = actionName.substr(0, actionName.indexOf('('));
+    return actionName;
+  }
+  return '[anonymous function]';
 }
 
 /**
@@ -122,6 +125,33 @@ exports.onSingleFileChange = function onSingleFileChange (pattern, action) {
   watchers.push(watcher);
 };
 
+const sideLoadActions = [];
+/**
+ * Add aditional onLoad action
+ *
+ * @param {Function} action
+ */
+exports.sideLoad = action => {
+  sideLoadActions.push(action);
+};
+const preLoadActions = [];
+/**
+ * Add aditional action before onLoad
+ *
+ * @param {Function} action
+ */
+exports.preLoad = action => {
+  preLoadActions.push(action);
+};
+const postLoadActions = [];
+/**
+ * Add aditional action after onLoad
+ *
+ * @param {Function} action
+ */
+exports.postLoad = action => {
+  postLoadActions.push(action);
+};
 /**
  * Action to execute on load
  *
@@ -130,10 +160,14 @@ exports.onSingleFileChange = function onSingleFileChange (pattern, action) {
 exports.onLoad = action => {
   message('Starting...');
 
-  action(() => {
+  series_(
+    parallel(...preLoadActions),
+    parallel(...sideLoadActions, action),
+    parallel(...postLoadActions)
+  )(() => {
     message('Finished');
     if (watchers.length > 0) {
-      if(process.argv.includes('--continue-watching=false')){
+      if (process.argv.includes('--continue-watching=false')) {
         exit(0);
       }
       message('Continue watching...');
@@ -357,3 +391,28 @@ function reload () {
 }
 exports.reload = reload;
 onFileChange(['./wesp.js', __dirname + '/*'], reload);
+
+/**
+ * Throttle the execution of an action
+ * throttle(200)(action)
+ *
+ * @param {number} time - The throttle time in miliseconds
+ * @returns {Function}
+ */
+exports.throttle = time => {
+  let lastRunTime = 0;
+  let timeout = null;
+  return cb => function () {
+    const now = Date.now();
+    if (now - lastRunTime >= time) {
+      lastRunTime = now;
+      cb(...arguments);
+    } else if (timeout === null) {
+      timeout = setTimeout(() => {
+        timeout = null;
+        lastRunTime = now;
+        cb(...arguments);
+      }, time - (now - lastRunTime));
+    }
+  };
+};
