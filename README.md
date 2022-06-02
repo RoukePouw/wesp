@@ -30,7 +30,7 @@ Result
 Bzzz
 ```
 
-To run once without continuing to wathc files use:
+To run once without continuing to watch files use:
 ```sh
 $ wesp --continue-watching=false
 ```
@@ -64,10 +64,9 @@ wesp.onFileChange('myfolder/*.js',
 );
 
 // Execute action for all files
-wesp.forEachFile('myfolder/*.js', 
-    forEachFile('otherfolder/*.txt'
-        (path,content) => callback => { console.log(path,content); callback();}
-    )
+wesp.forEachFile(
+    'myfolder/*.js', 
+    (path, content) => callback => { console.log(path,content); callback();}
 );
 
 // Execute action only if one set of files is newer than other set of files
