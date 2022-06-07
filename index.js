@@ -76,6 +76,7 @@ const parallel = (...actions) => function parallel (cb) {
 };
 exports.parallel = parallel;
 
+const watchActions = [];
 const watchers = [];
 /**
  * Watch for file changes in given path, fire if changes are detected
@@ -87,17 +88,19 @@ const watchers = [];
  */
 const onFileChange = function onFileChange (pattern, action, persistent = true) {
   // https://www.npmjs.com/package/chokidar/v/3.0.0
-  const watcher = chokidar.watch(pattern, {
-    persistent: persistent,
-    ignoreInitial: true,
-    followSymlinks: true
-  }).on('all', (event, filePath) => {
-    message('Starting ' + event + ' detected: ' + filePath + '...');
-    action(() => {
-      message('Finished ' + filePath);
+  watchActions.push(() => {
+    const watcher = chokidar.watch(pattern, {
+      persistent: persistent,
+      ignoreInitial: true,
+      followSymlinks: true
+    }).on('all', (event, filePath) => {
+      message('Starting ' + event + ' detected: ' + filePath + '...');
+      action(() => {
+        message('Finished ' + filePath);
+      });
     });
+    watchers.push(watcher);
   });
-  watchers.push(watcher);
 };
 exports.onFileChange = onFileChange;
 
@@ -110,19 +113,21 @@ exports.onFileChange = onFileChange;
  */
 exports.onSingleFileChange = function onSingleFileChange (pattern, action) {
   // https://www.npmjs.com/package/chokidar/v/3.0.0
-  const watcher = chokidar.watch(pattern, {
-    persistent: true,
-    ignoreInitial: true,
-    followSymlinks: true
-  }).on('all', (event, filePath) => {
-    message('Starting ' + event + ' detected: ' + filePath + '...');
-    if (event === 'change' || event === 'add') {
-      action(filePath, event)(() => {
-        message('Finished ' + filePath);
-      });
-    }
+  watchActions.push(() => {
+    const watcher = chokidar.watch(pattern, {
+      persistent: true,
+      ignoreInitial: true,
+      followSymlinks: true
+    }).on('all', (event, filePath) => {
+      message('Starting ' + event + ' detected: ' + filePath + '...');
+      if (event === 'change' || event === 'add') {
+        action(filePath, event)(() => {
+          message('Finished ' + filePath);
+        });
+      }
+    });
+    watchers.push(watcher);
   });
-  watchers.push(watcher);
 };
 
 const sideLoadActions = [];
@@ -166,10 +171,11 @@ exports.onLoad = action => {
     parallel(...postLoadActions)
   )(() => {
     message('Finished');
-    if (watchers.length > 0) {
+    if (watchActions.length > 0) {
       if (process.argv.includes('--continue-watching=false')) {
         exit(0);
       }
+      watchActions.forEach(watchAction => watchAction());
       message('Continue watching...');
     }
   });
