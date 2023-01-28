@@ -1,8 +1,10 @@
 const fs = require('fs');
-const {exec} = require('child_process');
+const { exec } = require('child_process');
 const glob = require('glob');
 const chokidar = require('chokidar');
 const { exit } = require('process');
+
+const executeCommands = new Map();
 
 /**
  * Callback
@@ -15,11 +17,14 @@ const { exit } = require('process');
  *
  * @param action
  */
-function getActionName (action) {
+function getActionName(action) {
   let actionName = action.toString();
   if (actionName.startsWith('function ')) {
     actionName = actionName.substr('function '.length);
     actionName = actionName.substr(0, actionName.indexOf('('));
+    if (actionName === 'execute') {
+      return executeCommands.has(action) ? executeCommands.get(action) : 'execute'
+    }
     return actionName;
   }
   return '[anonymous function]';
@@ -31,7 +36,7 @@ function getActionName (action) {
  * @param {...Function} actions - steps
  * @returns {Callback}
  */
-const series_ = (...actions) => function series (cb) {
+const series_ = (...actions) => function series(cb) {
   if (actions.length === 0) cb();
   else {
     message(getActionName(actions[0]));
@@ -49,7 +54,7 @@ exports.series = series_;
  * @param {...Function} actions
  * @returns {Callback}
  */
-const parallel = (...actions) => function parallel (cb) {
+const parallel = (...actions) => function parallel(cb) {
   if (actions.length === 0) cb();
   else {
     const done = new Set();
@@ -57,7 +62,7 @@ const parallel = (...actions) => function parallel (cb) {
      *
      * @param action
      */
-    function markDone (action) {
+    function markDone(action) {
       done.add(action);
       if (done.size === actions.length) cb();
     }
@@ -67,7 +72,7 @@ const parallel = (...actions) => function parallel (cb) {
       /**
        *
        */
-      async function call () {
+      async function call() {
         action(() => markDone(action));
       }
       call();
@@ -86,7 +91,7 @@ const watchers = [];
  * @param action
  * @param persistent
  */
-const onFileChange = function onFileChange (pattern, action, persistent = true) {
+const onFileChange = function onFileChange(pattern, action, persistent = true) {
   // https://www.npmjs.com/package/chokidar/v/3.0.0
   watchActions.push(() => {
     const watcher = chokidar.watch(pattern, {
@@ -111,7 +116,7 @@ exports.onFileChange = onFileChange;
  * @param {Function} actions
  * @param action
  */
-exports.onSingleFileChange = function onSingleFileChange (pattern, action) {
+exports.onSingleFileChange = function onSingleFileChange(pattern, action) {
   // https://www.npmjs.com/package/chokidar/v/3.0.0
   watchActions.push(() => {
     const watcher = chokidar.watch(pattern, {
@@ -133,30 +138,27 @@ exports.onSingleFileChange = function onSingleFileChange (pattern, action) {
 const sideLoadActions = [];
 /**
  * Add aditional onLoad action
- *
- * @param {Function} action
+ * @param {Function} action 
  */
 exports.sideLoad = action => {
   sideLoadActions.push(action);
-};
+}
 const preLoadActions = [];
 /**
  * Add aditional action before onLoad
- *
- * @param {Function} action
+ * @param {Function} action 
  */
 exports.preLoad = action => {
   preLoadActions.push(action);
-};
+}
 const postLoadActions = [];
 /**
  * Add aditional action after onLoad
- *
- * @param {Function} action
+ * @param {Function} action 
  */
 exports.postLoad = action => {
   postLoadActions.push(action);
-};
+}
 /**
  * Action to execute on load
  *
@@ -169,16 +171,17 @@ exports.onLoad = action => {
     parallel(...preLoadActions),
     parallel(...sideLoadActions, action),
     parallel(...postLoadActions)
-  )(() => {
-    message('Finished');
-    if (watchActions.length > 0) {
-      if (process.argv.includes('--continue-watching=false')) {
-        exit(0);
+  )
+    (() => {
+      message('Finished');
+      if (watchActions.length > 0) {
+        if (process.argv.includes('--continue-watching=false')) {
+          exit(0);
+        }
+        watchActions.forEach(watchAction => watchAction());
+        message('Continue watching...');
       }
-      watchActions.forEach(watchAction => watchAction());
-      message('Continue watching...');
-    }
-  });
+    });
 };
 
 /**
@@ -187,7 +190,7 @@ exports.onLoad = action => {
  * @param {string} filePath
  * @returns {string}
  */
-function getFileName (filePath) {
+function getFileName(filePath) {
   return filePath.substring(filePath.lastIndexOf('/') + 1);
 }
 exports.getFileName = getFileName;
@@ -198,7 +201,7 @@ exports.getFileName = getFileName;
  * @param {string} filePath
  * @returns {string}
  */
-exports.getBaseName = function getBaseName (filePath) {
+exports.getBaseName = function getBaseName(filePath) {
   const fileName = getFileName(filePath);
   if (fileName.startsWith('.')) { // hidden files '/a/b/.c.d.e' -> '.c.d'
     return fileName.substring(0, fileName.lastIndexOf('.', 1));
@@ -215,7 +218,7 @@ exports.getBaseName = function getBaseName (filePath) {
  * @param {string} filePath
  * @returns {string}
  */
-exports.getExtension = function getExtension (filePath) {
+exports.getExtension = function getExtension(filePath) {
   const fileName = getFileName(filePath);
   if (fileName.startsWith('.')) { // hidden files '/a/b/.c.d.e' -> '.c.d'
     if (fileName.lastIndexOf('.', 1) !== -1) return fileName.substring(fileName.lastIndexOf('.') + 1); // /a/b/.c.d.e -> e
@@ -231,7 +234,7 @@ exports.getExtension = function getExtension (filePath) {
  * @param {string} filePath
  * @returns string
  */
-exports.getDirPath = function getDirPath (filePath) {
+exports.getDirPath = function getDirPath(filePath) {
   const split = filePath.split('/');
   return split.slice(0, split.length - 1).join('/');
 };
@@ -249,8 +252,13 @@ const handleError = cb => (error, stdout, stderr) => {
  * @param {string} command
  * @returns {Callback}
  */
-const execute = command => function execute (cb) {
-  exec(command, handleError(cb));
+const execute = (command, name = null) => {
+  const f = function execute(cb) {
+    exec(command, handleError(cb));
+  };
+  // to enable logging of the command on execution
+  executeCommands.set(f, name || command);
+  return f;
 };
 exports.execute = execute;
 /**
@@ -259,7 +267,7 @@ exports.execute = execute;
  * @param {string} dirPath
  * @returns {Callback}
  */
-exports.mkDir = function mkDir (dirPath) { return execute(`mkdir -p ${dirPath};`); };
+exports.mkDir = function mkDir(dirPath) { return execute(`mkdir -p ${dirPath};`); };
 
 /**
  * Execute an action for each file mathcing pattern
@@ -268,7 +276,7 @@ exports.mkDir = function mkDir (dirPath) { return execute(`mkdir -p ${dirPath};`
  * @param {Function} action - // action = ({path,contents}) => cb => {}
  * @returns {Callback}
  */
-exports.forEachFile = (pattern, action) => function forEachFile (cb) {
+exports.forEachFile = (pattern, action) => function forEachFile(cb) {
   const subPatterns = typeof pattern === 'string' ? [pattern] : pattern;
   let count = 0;
   let fileTotal = 0;
@@ -312,7 +320,7 @@ exports.forEachFile = (pattern, action) => function forEachFile (cb) {
  * @param {string} content
  * @returns {Callback}
  */
-exports.write = (path, content) => function write (cb) {
+exports.write = (path, content) => function write(cb) {
   fs.writeFile(path, content, handleError(cb));
 };
 /**
@@ -321,7 +329,7 @@ exports.write = (path, content) => function write (cb) {
  * @param {string} path
  * @returns {Callback} content
  */
-exports.read = path => function read (cb) {
+exports.read = path => function read(cb) {
   fs.readFile(path, (error, stdout, stderr) => {
     if (error !== null) console.error(`Error: ${error}\n ${stderr}`);
     cb(stdout.toString());
@@ -333,7 +341,7 @@ const padd = x => x < 10 ? '0' + x : x;
  *
  * @param {string} string
  */
-function message (string) { // TODO list of args
+function message(string) { // TODO list of args
   const now = new Date(); // TODO add some colors
   console.log('\x1b[36m' + padd(now.getHours()) + ':' + padd(now.getMinutes()) + ':' + padd(now.getSeconds()) + '\x1b[0m ' + string);
 }
@@ -347,7 +355,7 @@ exports.message = message;
  * @param {Function} action
  * @returns {Callback}
  */
-exports.ifNewerThan = (path0, path1, action) => function ifNewerThan (cb) {
+exports.ifNewerThan = (path0, path1, action) => function ifNewerThan(cb) {
   if (typeof path0 === 'string') path0 = [path0];
   if (typeof path1 === 'string') path1 = [path1];
   let done = false;
@@ -391,7 +399,7 @@ exports.ifNewerThan = (path0, path1, action) => function ifNewerThan (cb) {
 /**
  * Reload wesp process when wesp code has been changed
  */
-function reload () {
+function reload() {
   // the shell script will take this exit code to reload
   process.exit(3);
 }
@@ -401,8 +409,7 @@ onFileChange(['./wesp.js', __dirname + '/*'], reload);
 /**
  * Throttle the execution of an action
  * throttle(200)(action)
- *
- * @param {number} time - The throttle time in miliseconds
+ * @param {number} time The throttle time in miliseconds
  * @returns {Function}
  */
 exports.throttle = time => {
