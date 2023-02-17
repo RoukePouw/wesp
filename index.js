@@ -21,7 +21,7 @@ function getActionName (action) {
   let actionName = action.toString();
   if (actionName.startsWith('function ')) {
     actionName = actionName.substr('function '.length);
-    actionName = actionName.substr(0, actionName.indexOf('('));
+    actionName = actionName.substr(0, actionName.indexOf('(')).trim();
     // TODO maybe also for series and parallel
     if (actionName === 'execute' || actionName === 'forEachFile') {
       return executeCommands.has(action) ? executeCommands.get(action) : actionName;
@@ -341,13 +341,17 @@ exports.write = (path, content) => function write (cb) {
  * Read content from file
  *
  * @param {string} path
- * @returns {Callback} content
+ * @returns {Callback} content or null if file does not exist
  */
 exports.read = path => function read (cb) {
-  fs.readFile(path, (error, stdout, stderr) => {
-    if (error !== null) console.error(`Error: ${error}\n ${stderr}`);
-    cb(stdout.toString());
-  });
+  if (!fs.existsSync(path)) {
+    cb(null);
+  } else {
+    fs.readFile(path, (error, stdout, stderr) => {
+      if (error !== null) console.error(`Error: ${error}\n ${stderr}`);
+      cb(stdout.toString());
+    });
+  }
 };
 
 const padd = x => x < 10 ? '0' + x : x;
