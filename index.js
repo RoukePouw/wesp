@@ -40,14 +40,14 @@ function getActionName (action) {
  * @param {...Function} actions - steps
  * @returns {Callback}
  */
-const series_ = (...actions) => function series (cb) {
-  if (actions.length === 0) cb();
+const series_ = (...actions) => function series (cb, data = null) {
+  if (actions.length === 0) cb(data);
   else {
     message(getActionName(actions[0]));
-    actions[0](() => {
+    actions[0](data => {
       const a = actions.slice(1);
-      series_(...a)(cb);
-    });
+      series_(...a)(cb, data);
+    }, data);
   }
 };
 exports.series = series_;
@@ -58,26 +58,36 @@ exports.series = series_;
  * @param {...Function} actions
  * @returns {Callback}
  */
-const parallel = (...actions) => function parallel (cb) {
-  if (actions.length === 0) cb();
+const parallel = (...actions) => function parallel (cb, data = null) {
+  if (actions.length === 0) cb([]);
   else {
     const done = new Set();
+    const outputs = [];
     /**
      *
      * @param action
+     * @param index
+     * @param output
      */
-    function markDone (action) {
-      done.add(action);
-      if (done.size === actions.length) cb();
+    function markDone (action, index, output) {
+      if (done.has(index)) {
+        console.error(`Warning: duplicate fire for ${getActionName(action)}`);
+        return;
+      }
+      done.add(index);
+      // Pass all outputs to callback
+      outputs[index] = output;
+      if (done.size === actions.length) cb(outputs);
     }
 
-    for (const action of actions) {
+    for (const index in actions) {
+      const action = actions[index];
       message(getActionName(action));
       /**
        *
        */
       async function call () {
-        action(() => markDone(action));
+        action(output => markDone(action, index, output), data);
       }
       call();
     }
@@ -331,15 +341,44 @@ exports.forEachFile = (pattern, action) => {
  * Write content to file
  *
  * @param {string} path
- * @param {string} content
+ * @param {[string]} - - content, if none provided, the content from the stream is used
+ * @param content
  * @returns {Callback}
  */
-exports.write = (path, content) => function write (cb) {
+exports.write = (path, content = null) => function write (cb, altContent = null) {
+  if (content === null && altContent === null) {
+    // TODO error
+    return;
+  } else if (content === null) content = altContent;
   fs.writeFile(path, content, handleError(cb));
 };
+
+/**
+ * Transform input into output for next action
+ *
+ * @param {Function} transformation
+ * @returns {Callback}
+ */
+exports.pipe = transformation => function pipe (cb, input) {
+  let output;
+  try {
+    output = transformation(input);
+  } catch (error) {
+    console.error(`Error: failed pipe transformation \n ${error}`);
+    return;
+  }
+  cb(output);
+};
+
 /**
  * Read content from file
  *
+ * @example
+ * series(
+ *  read('file1.txt'), // Read file content
+ *  pipe(content => content + ' hello world'), // Append ' hello world' to content
+ *  read('file2.txt') // Write content to second file
+ * );
  * @param {string} path
  * @returns {Callback} content or null if file does not exist
  */

@@ -75,6 +75,15 @@ wesp.ifNewerThan(
     'otherfolder/*.txt', 
     callback => {console.log('Bzzz'); callback();} 
 );
+ 
+wesp.onFileChange('file1.txt', // Monitor for file changes
+  series(
+   read('file1.txt'), // Read file content
+   pipe(content => content + ' hello world'), // Append ' hello world' to content
+   read('file2.txt') // Write appended content to second file
+  )
+);
+
 
 ```
 
