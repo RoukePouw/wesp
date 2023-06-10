@@ -309,7 +309,6 @@ exports.forEachFile = (pattern, action) => {
     };
     const cwd = process.cwd();
     for (const subPattern of subPatterns) {
-      console.log("subPattern", subPattern)
       const isAbsolutePath = subPattern.startsWith('/');
       glob(isAbsolutePath ? subPattern : cwd + '/' + subPattern, {}, function (error, filePaths) {
         if (error) {
