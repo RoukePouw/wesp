@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const { execSync } = require('child_process');
-const { existsSync, readFileSync } = require('fs');
+const { existsSync, readFileSync, readlinkSync } = require('fs');
 
 const argv = process.argv.slice(2);
 
@@ -17,7 +17,19 @@ if (argv.includes('--help') || argv.includes('-h') || argv.includes('-?')) {
 } else if (argv.includes('--version') || argv.includes('-v')) {
   const splitPath = process.argv[1].split('/');
   const packageJsonPath = splitPath.slice(0, splitPath.length - 2).join('/') + '/package.json';
-  const version = JSON.parse(readFileSync(packageJsonPath)).version;
+  let version;
+  if (existsSync(packageJsonPath)) {
+    version = JSON.parse(readFileSync(packageJsonPath)).version;
+  } else {
+    try {
+      const splitPath = readlinkSync(process.argv[1]).split('/');
+      const packageJsonPath = splitPath.slice(0, splitPath.length - 2).join('/') + '/package.json';
+      version = JSON.parse(readFileSync(packageJsonPath)).version;
+    } catch (error) {
+      console.error('Failed to determine version');
+      process.exit(1);
+    }
+  }
   console.log(version);
   process.exit(0);
 }
