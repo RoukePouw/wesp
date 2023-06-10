@@ -1,6 +1,6 @@
 {
   "name": "wesp",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Javascript workflow utilities",
   "main": "index.js",
   "author": "RoukePouw",
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "chokidar": "^3.5.3",
-    "glob": "^8.0.1"
+    "glob": "^8.1.0"
   },
   "homepage": "https://github.com/roukepouw/wesp",
   "repository": {

@@ -35,6 +35,11 @@ To run once without continuing to watch files use:
 $ wesp --continue-watching=false
 ```
 
+By default wesp looks for a `wesp.js` file in the current directory. To use a different file use:
+```sh
+$ wesp /my/path/file.js
+```
+
 
 ## API
 

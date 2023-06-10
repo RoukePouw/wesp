@@ -17,7 +17,7 @@ const executeCommands = new Map();
  *
  * @param action
  */
-function getActionName (action) {
+function getActionName(action) {
   let actionName = action.toString();
   if (actionName.startsWith('function ')) {
     actionName = actionName.substr('function '.length);
@@ -40,7 +40,7 @@ function getActionName (action) {
  * @param {...Function} actions - steps
  * @returns {Callback}
  */
-const series_ = (...actions) => function series (cb, data = null) {
+const series_ = (...actions) => function series(cb, data = null) {
   if (actions.length === 0) cb(data);
   else {
     message(getActionName(actions[0]));
@@ -58,7 +58,7 @@ exports.series = series_;
  * @param {...Function} actions
  * @returns {Callback}
  */
-const parallel = (...actions) => function parallel (cb, data = null) {
+const parallel = (...actions) => function parallel(cb, data = null) {
   if (actions.length === 0) cb([]);
   else {
     const done = new Set();
@@ -69,7 +69,7 @@ const parallel = (...actions) => function parallel (cb, data = null) {
      * @param index
      * @param output
      */
-    function markDone (action, index, output) {
+    function markDone(action, index, output) {
       if (done.has(index)) {
         console.error(`Warning: duplicate fire for ${getActionName(action)}`);
         return;
@@ -86,7 +86,7 @@ const parallel = (...actions) => function parallel (cb, data = null) {
       /**
        *
        */
-      async function call () {
+      async function call() {
         action(output => markDone(action, index, output), data);
       }
       call();
@@ -105,7 +105,7 @@ const watchers = [];
  * @param action
  * @param persistent
  */
-const onFileChange = function onFileChange (pattern, action, persistent = true) {
+const onFileChange = function onFileChange(pattern, action, persistent = true) {
   // https://www.npmjs.com/package/chokidar/v/3.0.0
   watchActions.push(() => {
     const watcher = chokidar.watch(pattern, {
@@ -130,7 +130,7 @@ exports.onFileChange = onFileChange;
  * @param {Function} actions
  * @param action
  */
-exports.onSingleFileChange = function onSingleFileChange (pattern, action) {
+exports.onSingleFileChange = function onSingleFileChange(pattern, action) {
   // https://www.npmjs.com/package/chokidar/v/3.0.0
   watchActions.push(() => {
     const watcher = chokidar.watch(pattern, {
@@ -189,16 +189,16 @@ exports.onLoad = action => {
     parallel(...sideLoadActions, action),
     parallel(...postLoadActions)
   )
-  (() => {
-    message('Finished');
-    if (watchActions.length > 0) {
-      if (process.argv.includes('--continue-watching=false')) {
-        exit(0);
+    (() => {
+      message('Finished');
+      if (watchActions.length > 0) {
+        if (process.argv.includes('--continue-watching=false')) {
+          exit(0);
+        }
+        watchActions.forEach(watchAction => watchAction());
+        message('Continue watching...');
       }
-      watchActions.forEach(watchAction => watchAction());
-      message('Continue watching...');
-    }
-  });
+    });
 };
 
 /**
@@ -207,7 +207,7 @@ exports.onLoad = action => {
  * @param {string} filePath
  * @returns {string}
  */
-function getFileName (filePath) {
+function getFileName(filePath) {
   return filePath.substring(filePath.lastIndexOf('/') + 1);
 }
 exports.getFileName = getFileName;
@@ -218,7 +218,7 @@ exports.getFileName = getFileName;
  * @param {string} filePath
  * @returns {string}
  */
-exports.getBaseName = function getBaseName (filePath) {
+exports.getBaseName = function getBaseName(filePath) {
   const fileName = getFileName(filePath);
   if (fileName.startsWith('.')) { // hidden files '/a/b/.c.d.e' -> '.c.d'
     return fileName.substring(0, fileName.lastIndexOf('.', 1));
@@ -235,7 +235,7 @@ exports.getBaseName = function getBaseName (filePath) {
  * @param {string} filePath
  * @returns {string}
  */
-exports.getExtension = function getExtension (filePath) {
+exports.getExtension = function getExtension(filePath) {
   const fileName = getFileName(filePath);
   if (fileName.startsWith('.')) { // hidden files '/a/b/.c.d.e' -> '.c.d'
     if (fileName.lastIndexOf('.', 1) !== -1) return fileName.substring(fileName.lastIndexOf('.') + 1); // /a/b/.c.d.e -> e
@@ -251,7 +251,7 @@ exports.getExtension = function getExtension (filePath) {
  * @param {string} filePath
  * @returns string
  */
-exports.getDirPath = function getDirPath (filePath) {
+exports.getDirPath = function getDirPath(filePath) {
   const split = filePath.split('/');
   return split.slice(0, split.length - 1).join('/');
 };
@@ -271,7 +271,7 @@ const handleError = cb => (error, stdout, stderr) => {
  * @returns {Callback}
  */
 const execute = (command, name = null) => {
-  const f = function execute (cb) {
+  const f = function execute(cb) {
     exec(command, handleError(cb));
   };
   // to enable logging of the command on execution
@@ -285,7 +285,7 @@ exports.execute = execute;
  * @param {string} dirPath
  * @returns {Callback}
  */
-exports.mkDir = function mkDir (dirPath) { return execute(`mkdir -p ${dirPath};`); };
+exports.mkDir = function mkDir(dirPath) { return execute(`mkdir -p ${dirPath};`); };
 
 /**
  * Execute an action for each file mathcing pattern
@@ -296,7 +296,7 @@ exports.mkDir = function mkDir (dirPath) { return execute(`mkdir -p ${dirPath};`
  */
 exports.forEachFile = (pattern, action) => {
   const actionName = getActionName(action);
-  const f = function forEachFile (cb) {
+  const f = function forEachFile(cb) {
     const subPatterns = typeof pattern === 'string' ? [pattern] : pattern;
     let count = 0;
     let fileTotal = 0;
@@ -309,7 +309,9 @@ exports.forEachFile = (pattern, action) => {
     };
     const cwd = process.cwd();
     for (const subPattern of subPatterns) {
-      glob(cwd + '/' + subPattern, {}, function (error, filePaths) {
+      console.log("subPattern", subPattern)
+      const isAbsolutePath = subPattern.startsWith('/');
+      glob(isAbsolutePath ? subPattern : cwd + '/' + subPattern, {}, function (error, filePaths) {
         if (error) {
           // TODO
         } else {
@@ -319,7 +321,7 @@ exports.forEachFile = (pattern, action) => {
           };
           fileTotal += filePaths.length;
           for (const filePath of filePaths) {
-            message('forEachFile: ' + actionName + ' : ' + filePath.substr(cwd.length));
+            message('forEachFile: ' + actionName + ' : ' + isAbsolutePath ? filePath : filePath.substr(cwd.length));
             fs.readFile(filePath, {}, (error, data) => {
               const file = {
                 path: filePath,
@@ -345,7 +347,7 @@ exports.forEachFile = (pattern, action) => {
  * @param content
  * @returns {Callback}
  */
-exports.write = (path, content = null) => function write (cb, altContent = null) {
+exports.write = (path, content = null) => function write(cb, altContent = null) {
   if (content === null && altContent === null) {
     // TODO error
     return;
@@ -359,7 +361,7 @@ exports.write = (path, content = null) => function write (cb, altContent = null)
  * @param {Function} transformation
  * @returns {Callback}
  */
-exports.pipe = transformation => function pipe (cb, input) {
+exports.pipe = transformation => function pipe(cb, input) {
   let output;
   try {
     output = transformation(input);
@@ -382,7 +384,7 @@ exports.pipe = transformation => function pipe (cb, input) {
  * @param {string} path
  * @returns {Callback} content or null if file does not exist
  */
-exports.read = path => function read (cb) {
+exports.read = path => function read(cb) {
   if (!fs.existsSync(path)) {
     cb(null);
   } else {
@@ -398,7 +400,7 @@ const padd = x => x < 10 ? '0' + x : x;
  *
  * @param {string} string
  */
-function message (string) { // TODO list of args
+function message(string) { // TODO list of args
   const now = new Date(); // TODO add some colors
   console.log('\x1b[36m' + padd(now.getHours()) + ':' + padd(now.getMinutes()) + ':' + padd(now.getSeconds()) + '\x1b[0m ' + string);
 }
@@ -412,7 +414,7 @@ exports.message = message;
  * @param {Function} action
  * @returns {Callback}
  */
-exports.ifNewerThan = (path0, path1, action) => function ifNewerThan (cb) {
+exports.ifNewerThan = (path0, path1, action) => function ifNewerThan(cb) {
   if (typeof path0 === 'string') path0 = [path0];
   if (typeof path1 === 'string') path1 = [path1];
   let done = false;
@@ -456,7 +458,7 @@ exports.ifNewerThan = (path0, path1, action) => function ifNewerThan (cb) {
 /**
  * Reload wesp process when wesp code has been changed
  */
-function reload () {
+function reload() {
   // the shell script will take this exit code to reload
   process.exit(3);
 }
