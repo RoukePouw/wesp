@@ -28,9 +28,6 @@ function getActionName (action) {
     }
     return actionName;
   }
-  // TODO Maybe use this?
-  // actionName = actionName.split('\n')[0].replace('{','')
-  // console.log(actionName)
   return '[anonymous function]';
 }
 
@@ -71,7 +68,7 @@ const parallel = (...actions) => function parallel (cb, data = null) {
      */
     function markDone (action, index, output) {
       if (done.has(index)) {
-        console.error(`Warning: duplicate fire for ${getActionName(action)}`);
+        failure(`Duplicate fire for ${getActionName(action)}`);
         return;
       }
       done.add(index);
@@ -101,17 +98,23 @@ const watchers = [];
  * Watch for file changes in given path, fire if changes are detected
  *
  * @param {string|string[]} pattern
- * @param {Function} actions
- * @param action
- * @param persistent
+ * @param {Function} action
+ * @param {object|boolean} options
+ * @param {boolean} options.persistent
+ * @param {string} options.ignored - '*.txt'
  */
-const onFileChange = function onFileChange (pattern, action, persistent = true) {
+const onFileChange = function onFileChange (pattern, action, options = true) {
+  // Note: previsously the 3rd parameter was used for persistent, extended to support more chokidar options
+  if (options === true) options = {persistent: true};
+  else if (options === false) options = {persistent: false};
+  else if (!('persistant' in options)) options.persistent = true;
+
   // https://www.npmjs.com/package/chokidar/v/3.0.0
   watchActions.push(() => {
     const watcher = chokidar.watch(pattern, {
-      persistent: persistent,
       ignoreInitial: true,
-      followSymlinks: true
+      followSymlinks: true,
+      ...options
     }).on('all', (event, filePath) => {
       message('Starting ' + event + ' detected: ' + filePath + '...');
       action(() => {
@@ -129,6 +132,7 @@ exports.onFileChange = onFileChange;
  * @param {string|string[]} pattern
  * @param {Function} actions
  * @param action
+ * @param options
  */
 exports.onSingleFileChange = function onSingleFileChange (pattern, action) {
   // https://www.npmjs.com/package/chokidar/v/3.0.0
@@ -258,7 +262,7 @@ exports.getDirPath = function getDirPath (filePath) {
 
 const handleError = cb => (error, stdout, stderr) => {
   if (error !== null) {
-    console.error(`Error: ${error}\n ${stderr} \n ${stdout}`);
+    failure(`${error}\n ${stderr} \n ${stdout}`);
   }
   cb(stdout);
 };
@@ -294,7 +298,7 @@ exports.mkDir = function mkDir (dirPath) { return execute(`mkdir -p ${dirPath};`
  * @param {Function} action - // action = ({path,contents}) => cb => {}
  * @returns {Callback}
  */
-exports.forEachFile = (pattern, action) => {
+exports.forEachFile = (pattern, action) => { // TODO add an ignore pattern
   const actionName = getActionName(action);
   const f = function forEachFile (cb) {
     const subPatterns = typeof pattern === 'string' ? [pattern] : pattern;
@@ -312,7 +316,7 @@ exports.forEachFile = (pattern, action) => {
       const isAbsolutePath = subPattern.startsWith('/');
       glob(isAbsolutePath ? subPattern : cwd + '/' + subPattern, {}, function (error, filePaths) {
         if (error) {
-          // TODO
+          failure('forEachFile:', error);
         } else {
           let count2 = 0;
           const mergeCb2 = () => {
@@ -348,7 +352,7 @@ exports.forEachFile = (pattern, action) => {
  */
 exports.write = (path, content = null) => function write (cb, altContent = null) {
   if (content === null && altContent === null) {
-    // TODO error
+    failure('write: No content or altContent provided');
     return;
   } else if (content === null) content = altContent;
   fs.writeFile(path, content, handleError(cb));
@@ -365,7 +369,7 @@ exports.pipe = transformation => function pipe (cb, input) {
   try {
     output = transformation(input);
   } catch (error) {
-    console.error(`Error: failed pipe transformation \n ${error}`);
+    failure(`Failed pipe transformation \n ${error}`);
     return;
   }
   cb(output);
@@ -388,22 +392,46 @@ exports.read = path => function read (cb) {
     cb(null);
   } else {
     fs.readFile(path, (error, stdout, stderr) => {
-      if (error !== null) console.error(`Error: ${error}\n ${stderr}`);
+      if (error !== null) failure(`${error}\n ${stderr}`);
       cb(stdout.toString());
     });
   }
 };
 
+/**
+ *
+ * @param {any} value
+ */
+function stringify (value) {
+  switch (typeof value) {
+    case 'string': return value;
+    case 'function':
+      return value.toString();
+    default:
+      return JSON.stringify(value);
+  }
+}
+
 const padd = x => x < 10 ? '0' + x : x;
 /**
  *
- * @param {string} string
+ * @param {any[]} args
  */
-function message (string) { // TODO list of args
-  const now = new Date(); // TODO add some colors
-  console.log('\x1b[36m' + padd(now.getHours()) + ':' + padd(now.getMinutes()) + ':' + padd(now.getSeconds()) + '\x1b[0m ' + string);
+function message (...args) {
+  const now = new Date();
+  console.log('\x1b[36m' + padd(now.getHours()) + ':' + padd(now.getMinutes()) + ':' + padd(now.getSeconds()) + '\x1b[0m ' + args.map(stringify).join(' '));
 }
 exports.message = message;
+
+/**
+ *
+ * @param {any[]} args
+ */
+function failure (...args) {
+  const now = new Date();
+  console.error('\x1b[31m' + padd(now.getHours()) + ':' + padd(now.getMinutes()) + ':' + padd(now.getSeconds()) + 'Error: ' + args.map(stringify).join(' ') + '\x1b[0m ');
+}
+exports.failure = failure;
 
 /**
  * Check if on set of files is newer than other set of files, execute action if so
